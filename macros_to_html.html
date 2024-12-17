@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radiology Data Filter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #226; /* Background color changed to indigo */
+      color: white; /* Text color changed to white to contrast with indigo background */
+      margin: 0;
+      padding: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      color: white;
+    }
+    th, td {
+      border: 1px solid white; /* Table borders are white */
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #333; /* Dark background for header */
+    }
+    .filter-container {
+      margin: 20px 0;
+    }
+    select {
+      margin-right: 20px;
+      padding: 8px;
+    }
+    .highlight {
+      font-weight: bold;
+    }
+    .highlight-region {
+      color: orange; /* Highlight color is orange */
+    }
+    .highlight-measurement {
+      color: orange; /* Highlight color is orange */
+    }
+    .highlight-side {
+      color: orange; /* Highlight color is orange */
+    }
+    .highlight-significance {
+      color: orange; /* Highlight color is orange */
+    }
+    .highlight-others {
+      color: orange; /* Highlight color is orange */
+    }
+  </style>
+</head>
+<body>
+  <h1>Radiology Data Filter</h1>
+
+  <div class="filter-container">
+    <input type="file" id="fileInput" accept=".xlsx" />
+    <br><br>
+    <label for="modality">Filter by Modality:</label>
+    <select id="modality" onchange="filterTable()">
+      <option value="all">All</option>
+    </select>
+
+    <label for="anatomy">Filter by Anatomy:</label>
+    <select id="anatomy" onchange="filterTable()">
+      <option value="all">All</option>
+    </select>
+  </div>
+
+  <table id="data-table">
+    <thead>
+      <tr>
+        <th>Modality</th>
+        <th>Anatomy</th>
+        <th>Name of Content</th>
+        <th>Content</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rows will be populated dynamically -->
+    </tbody>
+  </table>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const modalitySelect = document.getElementById("modality");
+    const anatomySelect = document.getElementById("anatomy");
+    const tableBody = document.querySelector("#data-table tbody");
+
+    let data = [];
+
+    // Function to highlight placeholders with orange color
+    function highlightPlaceholders(content) {
+      return content.replace(/\{(.*?)\}/g, (match, p1) => {
+        return `<span class="highlight highlight-others">${match}</span>`;
+      });
+    }
+
+    // Function to handle file input and parse the Excel file
+    fileInput.addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const workbook = XLSX.read(e.target.result, { type: "binary" });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+
+          // Convert the sheet data to JSON
+          data = XLSX.utils.sheet_to_json(sheet);
+          populateFilters();
+          populateTable(data);
+        };
+        reader.readAsBinaryString(file);
+      }
+    });
+
+    // Function to populate filter dropdowns with unique Modality and Anatomy values
+    function populateFilters() {
+      const modalities = [...new Set(data.map(item => item.Modality))];
+      const anatomies = [...new Set(data.map(item => item.Anatomy))];
+
+      modalitySelect.innerHTML = '<option value="all">All</option>';
+      anatomySelect.innerHTML = '<option value="all">All</option>';
+
+      modalities.forEach(modality => {
+        const option = document.createElement("option");
+        option.value = modality;
+        option.textContent = modality;
+        modalitySelect.appendChild(option);
+      });
+
+      anatomies.forEach(anatomy => {
+        const option = document.createElement("option");
+        option.value = anatomy;
+        option.textContent = anatomy;
+        anatomySelect.appendChild(option);
+      });
+    }
+
+    // Function to populate the table with filtered rows
+    function populateTable(rows) {
+      tableBody.innerHTML = ""; // Clear the table
+      rows.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.Modality || ""}</td>
+          <td>${row.Anatomy || ""}</td>
+          <td>${row["Name of Content"] || ""}</td>
+          <td>${highlightPlaceholders(row.Content || "")}</td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // Function to filter table data based on selected Modality and Anatomy
+    function filterTable() {
+      const selectedModality = modalitySelect.value;
+      const selectedAnatomy = anatomySelect.value;
+
+      const filteredRows = data.filter(row => {
+        const matchesModality = selectedModality === "all" || row.Modality === selectedModality;
+        const matchesAnatomy = selectedAnatomy === "all" || row.Anatomy === selectedAnatomy;
+        return matchesModality && matchesAnatomy;
+      });
+
+      populateTable(filteredRows);
+    }
+  </script>
+</body>
+</html>
